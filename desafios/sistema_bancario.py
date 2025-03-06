@@ -1,11 +1,24 @@
 # importa configurações do sistema
 import os
+
+from datetime import datetime
+
 # comando para limpar o terminal
 os.system("clear")
 
+
+# listas e variaveis
+historico_deposito = []
+historico_saque = []
+saldo = 0
+numero_saques = 0
+limite = 500
+# novas
+transacoes_hoje = 0
+LIMITE_TRANSACOES_DIARIAS = 10
+
+
 # funcao menu de opcoes
-
-
 def menu_de_opcoes():
     opcoes = """
     [1] - Depositar
@@ -42,30 +55,32 @@ def menu_de_opcoes():
             print("Operação inválida, por favor selecione novamente a operação desejada.")
 
 
-# listas e variaveis
-historico_deposito = []
-historico_saque = []
-saldo = 0
-numero_saques = 0
-limite = 500
-
-
 def op_deposito():
-    global saldo, historico_deposito
+    global saldo, transacoes_hoje
+
+    if transacoes_hoje >= LIMITE_TRANSACOES_DIARIAS:
+        print("Limite diário de transações atingido (10 transações por dia).")
+        return
 
     valor_deposito = float(input("Informe o valor a ser depositado: "))
     if valor_deposito <= 0:
         print("Valor do deposito precisa ser maior que R$0")
 
     else:
-        historico_deposito.append(valor_deposito)
+        data_hora = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        historico_deposito.append((valor_deposito, data_hora))
         saldo += valor_deposito
-        print(f"o valor deposito foi de + R${valor_deposito}")
+        transacoes_hoje += 1
+        print(f"O valor depositado foi de + R${valor_deposito} em {data_hora}")
 
 
 def op_saque():
     LIMITE_SAQUE = 3
-    global historico_saque, numero_saques, saldo, limite
+    global  numero_saques, saldo, limite, transacoes_hoje
+
+    if transacoes_hoje >= LIMITE_TRANSACOES_DIARIAS:
+        print("Limite diário de transações atingido (10 transações por dia).")
+        return
 
     if numero_saques >= LIMITE_SAQUE:
         print("Limite diário de saques atingido (3 saques por dia).")
@@ -82,10 +97,12 @@ def op_saque():
         print("Saldo insuficiente para realizar o saque.")
 
     else:
-        historico_saque.append(valor_saque)
+        data_hora = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        historico_saque.append((valor_saque, data_hora))
         saldo -= valor_saque
         numero_saques += 1
-        print(f"o valor saque foi de - R${valor_saque}")
+        transacoes_hoje += 1
+        print(f"O valor sacado foi de - R${valor_saque} em {data_hora}")
 
 
 def exibi_extrato():
@@ -94,11 +111,12 @@ def exibi_extrato():
         print("Nenhum depósito ou saque foi realizado.")
     else:
         print("Extrato de transações:")
-        for valores in historico_deposito:
-            print(f"+ R${valores}")
-        for valores in historico_saque:
-            print(f"- R${valores}")
+        for valor, data_hora in historico_deposito:
+            print(f"+ R${valor} em {data_hora}")
+        for valor, data_hora in historico_saque:
+            print(f"- R${valor} em {data_hora}")
         print(f"Saldo atual: R$ {saldo}")
 
-
 menu_de_opcoes()
+
+
