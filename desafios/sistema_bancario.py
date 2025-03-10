@@ -1,122 +1,160 @@
-# importa configurações do sistema
-import os
-
-from datetime import datetime
-
-# comando para limpar o terminal
-os.system("clear")
+import textwrap
 
 
-# listas e variaveis
-historico_deposito = []
-historico_saque = []
-saldo = 0
-numero_saques = 0
-limite = 500
-# novas
-transacoes_hoje = 0
-LIMITE_TRANSACOES_DIARIAS = 10
-
-
-# funcao menu de opcoes
-def menu_de_opcoes():
-    opcoes = """
-    [1] - Depositar
-    [2] - Sacar
-    [3] - Extrato
-    [0] - Sair
+def menu():
+    menu = """\n
+    ================ MENU ================
+    [d]\tDepositar
+    [s]\tSacar
+    [e]\tExtrato
+    [nc]\tNova conta
+    [lc]\tListar contas
+    [nu]\tNovo usuário
+    [q]\tSair
     => """
+    return input(textwrap.dedent(menu))
+
+
+def depositar(saldo, valor, extrato, /):
+    if valor > 0:
+        saldo += valor
+        extrato += f"Depósito:\tR$ {valor:.2f}\n"
+        print("\n=== Depósito realizado com sucesso! ===")
+    else:
+        print("\n@@@ Operação falhou! O valor informado é inválido. @@@")
+
+    return saldo, extrato
+
+
+def sacar(*, saldo, valor, extrato, limite, numero_saques, limite_saques):
+    excedeu_saldo = valor > saldo
+    excedeu_limite = valor > limite
+    excedeu_saques = numero_saques >= limite_saques
+
+    if excedeu_saldo:
+        print("\n@@@ Operação falhou! Você não tem saldo suficiente. @@@")
+
+    elif excedeu_limite:
+        print("\n@@@ Operação falhou! O valor do saque excede o limite. @@@")
+
+    elif excedeu_saques:
+        print("\n@@@ Operação falhou! Número máximo de saques excedido. @@@")
+
+    elif valor > 0:
+        saldo -= valor
+        extrato += f"Saque:\t\tR$ {valor:.2f}\n"
+        numero_saques += 1
+        print("\n=== Saque realizado com sucesso! ===")
+
+    else:
+        print("\n@@@ Operação falhou! O valor informado é inválido. @@@")
+
+    return saldo, extrato
+
+
+def exibir_extrato(saldo, /, *, extrato):
+    print("\n================ EXTRATO ================")
+    print("Não foram realizadas movimentações." if not extrato else extrato)
+    print(f"\nSaldo:\t\tR$ {saldo:.2f}")
+    print("==========================================")
+
+
+def criar_usuario(usuarios):
+    cpf = input("Informe o CPF (somente número): ")
+    usuario = filtrar_usuario(cpf, usuarios)
+
+    if usuario:
+        print("\n@@@ Já existe usuário com esse CPF! @@@")
+        return
+
+    nome = input("Informe o nome completo: ")
+    data_nascimento = input("Informe a data de nascimento (dd-mm-aaaa): ")
+    endereco = input("Informe o endereço (logradouro, nro - bairro - cidade/sigla estado): ")
+
+    usuarios.append({"nome": nome, "data_nascimento": data_nascimento, "cpf": cpf, "endereco": endereco})
+
+    print("=== Usuário criado com sucesso! ===")
+
+
+def filtrar_usuario(cpf, usuarios):
+    usuarios_filtrados = [usuario for usuario in usuarios if usuario["cpf"] == cpf]
+    return usuarios_filtrados[0] if usuarios_filtrados else None
+
+
+def criar_conta(agencia, numero_conta, usuarios):
+    cpf = input("Informe o CPF do usuário: ")
+    usuario = filtrar_usuario(cpf, usuarios)
+
+    if usuario:
+        print("\n=== Conta criada com sucesso! ===")
+        return {"agencia": agencia, "numero_conta": numero_conta, "usuario": usuario}
+
+    print("\n@@@ Usuário não encontrado, fluxo de criação de conta encerrado! @@@")
+
+
+def listar_contas(contas):
+    for conta in contas:
+        linha = f"""\
+            Agência:\t{conta['agencia']}
+            C/C:\t\t{conta['numero_conta']}
+            Titular:\t{conta['usuario']['nome']}
+        """
+        print("=" * 100)
+        print(textwrap.dedent(linha))
+
+
+def main():
+    LIMITE_SAQUES = 3
+    AGENCIA = "0001"
+
+    saldo = 0
+    limite = 500
+    extrato = ""
+    numero_saques = 0
+    usuarios = []
+    contas = []
 
     while True:
-        opcao = input(opcoes)
+        opcao = menu()
 
-        # chama a funcao op_deposito
-        if opcao == "1":
-            print("Deposito")
-            op_deposito()
+        if opcao == "d":
+            valor = float(input("Informe o valor do depósito: "))
 
-        # chama a funcao op_saque
-        elif opcao == "2":
-            print("Saque")
-            op_saque()
+            saldo, extrato = depositar(saldo, valor, extrato)
 
-        # chama a funcao exibi_extrato
-        elif opcao == "3":
-            print("Extrato")
-            exibi_extrato()
+        elif opcao == "s":
+            valor = float(input("Informe o valor do saque: "))
 
-        # enquanto o usuario nao escolher a opcao 0 o laço não para executar
-        elif opcao == "0":
-            print("Saindo...")
+            saldo, extrato = sacar(
+                saldo=saldo,
+                valor=valor,
+                extrato=extrato,
+                limite=limite,
+                numero_saques=numero_saques,
+                limite_saques=LIMITE_SAQUES,
+            )
+
+        elif opcao == "e":
+            exibir_extrato(saldo, extrato=extrato)
+
+        elif opcao == "nu":
+            criar_usuario(usuarios)
+
+        elif opcao == "nc":
+            numero_conta = len(contas) + 1
+            conta = criar_conta(AGENCIA, numero_conta, usuarios)
+
+            if conta:
+                contas.append(conta)
+
+        elif opcao == "lc":
+            listar_contas(contas)
+
+        elif opcao == "q":
             break
 
-        # qualquer tecla fora do escopo de opcoes e apresentado o print a baixo
         else:
             print("Operação inválida, por favor selecione novamente a operação desejada.")
 
 
-def op_deposito():
-    global saldo, transacoes_hoje
-
-    if transacoes_hoje >= LIMITE_TRANSACOES_DIARIAS:
-        print("Limite diário de transações atingido (10 transações por dia).")
-        return
-
-    valor_deposito = float(input("Informe o valor a ser depositado: "))
-    if valor_deposito <= 0:
-        print("Valor do deposito precisa ser maior que R$0")
-
-    else:
-        data_hora = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-        historico_deposito.append((valor_deposito, data_hora))
-        saldo += valor_deposito
-        transacoes_hoje += 1
-        print(f"O valor depositado foi de + R${valor_deposito} em {data_hora}")
-
-
-def op_saque():
-    LIMITE_SAQUE = 3
-    global  numero_saques, saldo, limite, transacoes_hoje
-
-    if transacoes_hoje >= LIMITE_TRANSACOES_DIARIAS:
-        print("Limite diário de transações atingido (10 transações por dia).")
-        return
-
-    if numero_saques >= LIMITE_SAQUE:
-        print("Limite diário de saques atingido (3 saques por dia).")
-        return
-
-    valor_saque = float(input("Informe o valor a ser sacado: "))
-    if valor_saque <= 0:
-        print("Valor do saque precisa ser maior que R$0")
-
-    elif valor_saque > limite:
-        print("O valor do saque não pode ser maior que R$500")
-
-    elif valor_saque > saldo:
-        print("Saldo insuficiente para realizar o saque.")
-
-    else:
-        data_hora = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-        historico_saque.append((valor_saque, data_hora))
-        saldo -= valor_saque
-        numero_saques += 1
-        transacoes_hoje += 1
-        print(f"O valor sacado foi de - R${valor_saque} em {data_hora}")
-
-
-def exibi_extrato():
-    global saldo
-    if not historico_deposito and not historico_saque:
-        print("Nenhum depósito ou saque foi realizado.")
-    else:
-        print("Extrato de transações:")
-        for valor, data_hora in historico_deposito:
-            print(f"+ R${valor} em {data_hora}")
-        for valor, data_hora in historico_saque:
-            print(f"- R${valor} em {data_hora}")
-        print(f"Saldo atual: R$ {saldo}")
-
-menu_de_opcoes()
-
-
+main()
